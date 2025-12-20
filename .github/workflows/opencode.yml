@@ -21,10 +21,27 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      - name: Check if PR is from fork
+        id: fork-check
+        if: github.event.issue.pull_request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          PR_DATA=$(gh api ${{ github.event.issue.pull_request.url }})
+          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head.repo.full_name')
+          BASE_REPO=$(echo "$PR_DATA" | jq -r '.base.repo.full_name')
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::Refusing to run on PR from fork ($HEAD_REPO) for security reasons"
+            exit 1
+          fi
+          echo "ref=$(echo "$PR_DATA" | jq -r '.head.ref')" >> $GITHUB_OUTPUT
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
+          # For PRs, checkout the PR branch; for issues, checkout default branch
+          ref: ${{ steps.fork-check.outputs.ref || github.ref }}
           fetch-depth: 1
 
       - name: Install opencode

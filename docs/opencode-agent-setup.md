@@ -125,6 +125,17 @@ jobs:
 4. **`USE_GITHUB_TOKEN: "true"`** - Tells OpenCode to use the provided `GITHUB_TOKEN` instead of OIDC exchange
 5. **No `id-token: write`** - Not needed since we're not using OIDC
 
+### How opencode github run Works
+
+Note that `opencode github run` takes no arguments - it automatically reads the triggering comment from the GitHub Actions event payload (`$GITHUB_EVENT_PATH`). This includes:
+
+- The comment body (your `/opencode` command and prompt)
+- Issue or PR context (number, title, body, labels)
+- Repository information
+- User who triggered the command
+
+Configuration is passed via environment variables (`MODEL`, `USE_GITHUB_TOKEN`, etc.) rather than CLI flags when running in GitHub mode.
+
 ## Step 5: Test It
 
 1. Open an issue or PR in your repository

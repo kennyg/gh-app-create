@@ -8,7 +8,9 @@ on:
 
 jobs:
   opencode:
-    if: contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc')
+    if: |
+      !endsWith(github.event.comment.user.login, '[bot]') &&
+      (contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc'))
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App Token

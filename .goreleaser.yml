@@ -7,6 +7,7 @@ before:
 
 builds:
   - main: ./cmd/gh-app-create/
+    binary: gh-app-create
     env:
       - CGO_ENABLED=0
     goos:
@@ -20,7 +21,8 @@ builds:
       - -s -w
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -28,13 +30,11 @@ archives:
       {{- .Arch }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 checksum:
   name_template: "checksums.txt"
-
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc

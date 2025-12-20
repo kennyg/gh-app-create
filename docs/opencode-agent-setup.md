@@ -136,6 +136,10 @@ Note that `opencode github run` takes no arguments - it automatically reads the 
 
 Configuration is passed via environment variables (`MODEL`, `USE_GITHUB_TOKEN`, etc.) rather than CLI flags when running in GitHub mode.
 
+For the full event payload schema, see the GitHub docs:
+- [issue_comment](https://docs.github.com/en/webhooks/webhook-events-and-payloads#issue_comment)
+- [pull_request_review_comment](https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request_review_comment)
+
 ## Step 5: Test It
 
 1. Open an issue or PR in your repository

@@ -6,7 +6,7 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/gh-app-create
+  - main: ./cmd/gh-app-create/
     env:
       - CGO_ENABLED=0
     goos:

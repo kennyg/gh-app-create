@@ -71,16 +71,35 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must specify --preset or --manifest\nRun 'gh app-create presets' to see available presets")
 	}
 
-	if flagName != "" {
-		m.Name = flagName
-	}
-
 	host := "github.com"
 	if flagHostname != "" {
 		host = flagHostname
 	}
 
+	// Determine the app name prefix (org or username) for uniqueness
+	if flagName != "" {
+		m.Name = flagName
+	} else if flagPreset != "" {
+		// Auto-prefix preset names with org or username to avoid slug conflicts
+		prefix := flagOrg
+		if prefix == "" {
+			prefix = getGitHubUsername(host)
+		}
+		if prefix != "" {
+			m.Name = fmt.Sprintf("%s-%s", prefix, m.Name)
+		}
+	}
+
 	m.RedirectURL = fmt.Sprintf("http://localhost:%d/callback", flagPort)
+
+	// If manifest has events but no webhook config, add a disabled webhook placeholder
+	// GitHub requires hook_attributes when events are specified
+	if len(m.DefaultEvents) > 0 && m.HookAttributes == nil {
+		m.HookAttributes = &manifest.HookAttributes{
+			URL:    "https://example.com/webhook",
+			Active: false,
+		}
+	}
 
 	var registerURL string
 	if flagOrg != "" {
@@ -263,4 +282,23 @@ button:hover { background: #22863a; }
 		manifestJSON,
 		debugPanel,
 	)
+}
+
+// getGitHubUsername fetches the authenticated user's login
+func getGitHubUsername(host string) string {
+	opts := api.ClientOptions{}
+	if host != "github.com" {
+		opts.Host = host
+	}
+	client, err := api.NewRESTClient(opts)
+	if err != nil {
+		return ""
+	}
+	var user struct {
+		Login string `json:"login"`
+	}
+	if err := client.Get("user", &user); err != nil {
+		return ""
+	}
+	return user.Login
 }

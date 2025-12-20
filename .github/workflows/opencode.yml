@@ -10,6 +10,7 @@ jobs:
   opencode:
     if: |
       !endsWith(github.event.comment.user.login, '[bot]') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
       (contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc'))
     runs-on: ubuntu-latest
     steps:

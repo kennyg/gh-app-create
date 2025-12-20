@@ -3,11 +3,10 @@ package manifest
 // Presets contains built-in GitHub App configurations
 var Presets = map[string]Manifest{
 	"opencode": {
-		Name:           "opencode-agent",
-		URL:            "https://opencode.ai",
-		Description:    "AI coding agent for GitHub issues and PRs",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "opencode-agent",
+		URL:         "https://opencode.ai",
+		Description: "AI coding agent for GitHub issues and PRs",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents":      "write",
 			"pull_requests": "write",
@@ -20,11 +19,10 @@ var Presets = map[string]Manifest{
 		},
 	},
 	"ci-bot": {
-		Name:           "ci-bot",
-		URL:            "https://example.com",
-		Description:    "CI/CD automation bot",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "ci-bot",
+		URL:         "https://example.com",
+		Description: "CI/CD automation bot",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents":      "write",
 			"pull_requests": "write",
@@ -40,11 +38,10 @@ var Presets = map[string]Manifest{
 		},
 	},
 	"release-bot": {
-		Name:           "release-bot",
-		URL:            "https://example.com",
-		Description:    "Automated release management",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "release-bot",
+		URL:         "https://example.com",
+		Description: "Automated release management",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents":      "write",
 			"pull_requests": "write",
@@ -57,11 +54,10 @@ var Presets = map[string]Manifest{
 		},
 	},
 	"readonly": {
-		Name:           "readonly-app",
-		URL:            "https://example.com",
-		Description:    "Read-only access for analysis tools",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "readonly-app",
+		URL:         "https://example.com",
+		Description: "Read-only access for analysis tools",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents": "read",
 			"metadata": "read",
@@ -69,11 +65,10 @@ var Presets = map[string]Manifest{
 		DefaultEvents: []string{},
 	},
 	"actions-token": {
-		Name:           "actions-token-app",
-		URL:            "https://example.com",
-		Description:    "GitHub App for generating installation tokens in Actions",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "actions-token-app",
+		URL:         "https://example.com",
+		Description: "GitHub App for generating installation tokens in Actions",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents":      "write",
 			"pull_requests": "write",
@@ -84,11 +79,10 @@ var Presets = map[string]Manifest{
 		DefaultEvents: []string{},
 	},
 	"renovate": {
-		Name:           "renovate-bot",
-		URL:            "https://github.com/renovatebot/renovate",
-		Description:    "Self-hosted Renovate for automated dependency updates",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "renovate-bot",
+		URL:         "https://github.com/renovatebot/renovate",
+		Description: "Self-hosted Renovate for automated dependency updates",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"checks":            "write",
 			"statuses":          "write",
@@ -113,11 +107,10 @@ var Presets = map[string]Manifest{
 // BlankTemplate returns an empty manifest template for customization
 func BlankTemplate() Manifest {
 	return Manifest{
-		Name:           "my-github-app",
-		URL:            "https://example.com",
-		Description:    "My custom GitHub App",
-		Public:         false,
-		HookAttributes: &HookAttributes{Active: false},
+		Name:        "my-github-app",
+		URL:         "https://example.com",
+		Description: "My custom GitHub App",
+		Public:      false,
 		DefaultPermissions: map[string]string{
 			"contents": "read",
 			"metadata": "read",

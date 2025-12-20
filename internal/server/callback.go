@@ -9,6 +9,7 @@ import (
 // CallbackServer handles the OAuth callback from GitHub
 type CallbackServer struct {
 	Port     int
+	FormHTML string
 	server   *http.Server
 	codeChan chan string
 	errChan  chan error
@@ -26,6 +27,7 @@ func New(port int) *CallbackServer {
 // Start begins listening for the OAuth callback
 func (s *CallbackServer) Start() error {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", s.handleForm)
 	mux.HandleFunc("/callback", s.handleCallback)
 
 	s.server = &http.Server{
@@ -40,6 +42,11 @@ func (s *CallbackServer) Start() error {
 	}()
 
 	return nil
+}
+
+func (s *CallbackServer) handleForm(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, s.FormHTML)
 }
 
 // WaitForCode blocks until a code is received or timeout occurs

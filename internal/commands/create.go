@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -94,25 +92,22 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "   Permissions: %v\n", manifest.FormatPermissions(m.DefaultPermissions))
 	fmt.Fprintf(os.Stderr, "   Events: %v\n\n", m.DefaultEvents)
 
+	manifestJSON, _ := json.Marshal(m)
+	formHTML := buildFormHTML(m, registerURL, string(manifestJSON))
+
 	callbackServer := server.New(flagPort)
+	callbackServer.FormHTML = formHTML
 	if err := callbackServer.Start(); err != nil {
 		return fmt.Errorf("starting callback server: %w", err)
 	}
 	defer callbackServer.Close()
 
-	manifestJSON, _ := json.Marshal(m)
-	formHTML := buildFormHTML(m, registerURL, string(manifestJSON))
-
-	tmpFile := filepath.Join(os.TempDir(), "gh-app-create.html")
-	if err := os.WriteFile(tmpFile, []byte(formHTML), 0644); err != nil {
-		return fmt.Errorf("writing temp file: %w", err)
-	}
-
+	localURL := fmt.Sprintf("http://localhost:%d", flagPort)
 	fmt.Fprintf(os.Stderr, "Opening browser...\n")
-	fmt.Fprintf(os.Stderr, "   (If browser doesn't open, visit: file://%s)\n\n", tmpFile)
+	fmt.Fprintf(os.Stderr, "   (If browser doesn't open, visit: %s)\n\n", localURL)
 
 	b := browser.New("", os.Stdout, os.Stderr)
-	_ = b.Browse("file://" + tmpFile)
+	_ = b.Browse(localURL)
 
 	fmt.Fprintf(os.Stderr, "Waiting for GitHub callback on port %d...\n", flagPort)
 
@@ -221,7 +216,7 @@ button:hover { background: #22863a; }
 %s
 </div>
 <form action="%s" method="post">
-<input type="hidden" name="manifest" value='%s'>
+<textarea name="manifest" rows="5" cols="80">%s</textarea>
 <button type="submit">Create GitHub App</button>
 </form>
 </div>
@@ -232,6 +227,6 @@ button:hover { background: #22863a; }
 		m.Description,
 		manifest.FormatPermissionsHTML(m.DefaultPermissions),
 		registerURL,
-		strings.ReplaceAll(manifestJSON, "'", "&#39;"),
+		manifestJSON,
 	)
 }

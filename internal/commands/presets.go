@@ -15,7 +15,8 @@ var presetsCmd = &cobra.Command{
 }
 
 func runPresets(cmd *cobra.Command, args []string) {
-	fmt.Println("Available presets:\n")
+	fmt.Println("Available presets:")
+	fmt.Println()
 	for name, m := range manifest.Presets {
 		fmt.Printf("  \033[1m%s\033[0m\n", name)
 		fmt.Printf("    %s\n", m.Description)

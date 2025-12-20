@@ -194,71 +194,83 @@ If your organization has GitHub Copilot licenses, you can use Copilot's models a
 
 ### How It Works
 
-1. LiteLLM proxy authenticates with GitHub Copilot using OAuth device flow
-2. OpenCode sends requests to your LiteLLM proxy
-3. LiteLLM forwards them to GitHub Copilot's API (`api.githubcopilot.com`)
+1. Authenticate with GitHub Copilot once locally (OAuth device flow)
+2. Cache the tokens and seed them as secrets to your GHE instance
+3. In CI, restore tokens and run LiteLLM as a sidecar
+4. OpenCode sends requests to LiteLLM, which forwards to Copilot's API
 
 ### Prerequisites
 
-- Active GitHub Copilot subscription (Individual, Business, or Enterprise)
-- LiteLLM proxy running (self-hosted or as a service)
+- Active GitHub Copilot subscription on github.com
+- `gh` CLI authenticated to both github.com and your GHE instance
+- LiteLLM: `pip install 'litellm[proxy]'`
 
-### Step 1: Set Up LiteLLM Proxy
+### Quick Start: Seed Copilot Tokens to GHE
 
-Create `litellm_config.yaml`:
+Use the included script to authenticate and seed tokens:
 
-```yaml
-model_list:
-  - model_name: copilot-claude
-    litellm_params:
-      model: github_copilot/claude-3.5-sonnet
-  - model_name: copilot-gpt4
-    litellm_params:
-      model: github_copilot/gpt-4o
+```bash
+# For a specific repository
+./scripts/seed-copilot-secrets.sh \
+  --repo myorg/myrepo \
+  --hostname github.mycompany.com
 
-general_settings:
-  master_key: sk-your-master-key-here
+# For an entire organization
+./scripts/seed-copilot-secrets.sh \
+  --org myorg \
+  --hostname github.mycompany.com
 ```
 
-Run the proxy:
+This script:
+1. Ensures you're authenticated to github.com (for Copilot) and your GHE instance
+2. Runs LiteLLM to trigger the OAuth device flow
+3. Extracts the cached tokens
+4. Uses `gh secret set` to push them to your GHE repo/org
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+**Step 1: Authenticate locally**
 
 ```bash
 pip install 'litellm[proxy]'
-litellm --config litellm_config.yaml --port 4000
+
+# Create minimal config
+cat > /tmp/litellm.yaml <<EOF
+model_list:
+  - model_name: copilot
+    litellm_params:
+      model: github_copilot/gpt-4o
+EOF
+
+# Start LiteLLM and complete device flow
+litellm --config /tmp/litellm.yaml --port 4000
 ```
 
-On first request, LiteLLM will prompt you to authenticate via GitHub's device flow:
-1. Visit the URL shown (e.g., `https://github.com/login/device`)
-2. Enter the code displayed
-3. Authorize the application
-4. Credentials are cached locally for future use
+On first request, follow the device flow prompts to authenticate.
 
-### Step 2: Deploy LiteLLM for GitHub Actions
+**Step 2: Extract and seed tokens**
 
-For GitHub Actions, you'll need LiteLLM accessible from your runners. Options:
+```bash
+# Tokens are stored here by default
+TOKEN_DIR=~/.config/litellm/github_copilot
 
-**Option A: Self-hosted runner with local proxy**
-```yaml
-jobs:
-  opencode:
-    runs-on: self-hosted
-    services:
-      litellm:
-        image: ghcr.io/berriai/litellm:main-latest
-        ports:
-          - 4000:4000
-        volumes:
-          - /path/to/litellm_config.yaml:/app/config.yaml
-          - /path/to/copilot-tokens:/root/.litellm  # Cached auth tokens
-        env:
-          LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
+# Seed to GHE
+gh secret set COPILOT_ACCESS_TOKEN \
+  --hostname github.mycompany.com \
+  --repo myorg/myrepo \
+  < "$TOKEN_DIR/access-token"
+
+gh secret set COPILOT_API_KEY \
+  --hostname github.mycompany.com \
+  --repo myorg/myrepo \
+  < "$TOKEN_DIR/api-key.json"
 ```
 
-**Option B: Centralized LiteLLM service**
+### Workflow Configuration
 
-Deploy LiteLLM as a service accessible to your runners (e.g., internal Kubernetes service, VM).
-
-### Step 3: Update Workflow
+Add this workflow to `.github/workflows/opencode.yml`:
 
 ```yaml
 name: opencode
@@ -272,7 +284,7 @@ on:
 jobs:
   opencode:
     if: contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc')
-    runs-on: ubuntu-latest  # or self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -287,16 +299,45 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 1
 
+      - name: Setup Copilot tokens
+        run: |
+          mkdir -p ~/.config/litellm/github_copilot
+          echo '${{ secrets.COPILOT_ACCESS_TOKEN }}' > ~/.config/litellm/github_copilot/access-token
+          echo '${{ secrets.COPILOT_API_KEY }}' > ~/.config/litellm/github_copilot/api-key.json
+
+      - name: Start LiteLLM proxy
+        run: |
+          pip install 'litellm[proxy]'
+          cat > /tmp/litellm.yaml <<EOF
+          model_list:
+            - model_name: copilot-claude
+              litellm_params:
+                model: github_copilot/claude-3.5-sonnet
+          general_settings:
+            master_key: sk-litellm-key
+          EOF
+          litellm --config /tmp/litellm.yaml --port 4000 &
+          sleep 5  # Wait for proxy to start
+
       - name: Run opencode
         uses: sst/opencode/github@dev
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          OPENAI_API_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
-          OPENAI_API_BASE: ${{ secrets.LITELLM_URL }}  # e.g., https://litellm.internal.company.com
+          OPENAI_API_KEY: sk-litellm-key
+          OPENAI_API_BASE: http://localhost:4000
         with:
-          model: openai/copilot-claude  # Model name from your litellm_config.yaml
+          model: openai/copilot-claude
           use_github_token: "true"
 ```
+
+### Required Secrets
+
+| Secret | Source | Description |
+|--------|--------|-------------|
+| `APP_ID` | `gh-app-create` output | Your GitHub App's numeric ID |
+| `APP_PRIVATE_KEY` | `gh-app-create` output | PEM file for GitHub App auth |
+| `COPILOT_ACCESS_TOKEN` | `seed-copilot-secrets.sh` | GitHub OAuth token for Copilot |
+| `COPILOT_API_KEY` | `seed-copilot-secrets.sh` | Copilot API key JSON |
 
 ### Available Copilot Models
 

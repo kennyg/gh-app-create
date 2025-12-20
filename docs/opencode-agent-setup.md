@@ -86,7 +86,10 @@ on:
 
 jobs:
   opencode:
-    if: contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc')
+    if: |
+      !endsWith(github.event.comment.user.login, '[bot]') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      (contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc'))
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App Token
@@ -102,21 +105,25 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 1
 
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
+
       - name: Run opencode
-        uses: sst/opencode/github@dev
+        run: ~/.opencode/bin/opencode github run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        with:
-          model: anthropic/claude-sonnet-4-20250514
-          use_github_token: "true"
+          MODEL: anthropic/claude-sonnet-4-20250514
+          USE_GITHUB_TOKEN: "true"
 ```
 
-### Key Differences from Public App Setup
+### Key Configuration Details
 
-1. **`actions/create-github-app-token`** - Generates an installation token from your app credentials
-2. **`use_github_token: "true"`** - Tells OpenCode to use the provided `GITHUB_TOKEN` instead of OIDC exchange
-3. **No `id-token: write`** - Not needed since we're not using OIDC
+1. **Security filters** - Prevents bot loops and restricts to authorized users (OWNER, MEMBER, COLLABORATOR)
+2. **`actions/create-github-app-token`** - Generates an installation token from your app credentials
+3. **Inlined installation** - Installs opencode directly instead of using the `sst/opencode/github` action, avoiding marketplace restrictions
+4. **`USE_GITHUB_TOKEN: "true"`** - Tells OpenCode to use the provided `GITHUB_TOKEN` instead of OIDC exchange
+5. **No `id-token: write`** - Not needed since we're not using OIDC
 
 ## Step 5: Test It
 
@@ -283,7 +290,10 @@ on:
 
 jobs:
   opencode:
-    if: contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc')
+    if: |
+      !endsWith(github.event.comment.user.login, '[bot]') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      (contains(github.event.comment.body, '/opencode') || contains(github.event.comment.body, '/oc'))
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App Token
@@ -319,15 +329,17 @@ jobs:
           litellm --config /tmp/litellm.yaml --port 4000 &
           sleep 5  # Wait for proxy to start
 
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
+
       - name: Run opencode
-        uses: sst/opencode/github@dev
+        run: ~/.opencode/bin/opencode github run
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           OPENAI_API_KEY: sk-litellm-key
           OPENAI_API_BASE: http://localhost:4000
-        with:
-          model: openai/copilot-claude
-          use_github_token: "true"
+          MODEL: openai/copilot-claude
+          USE_GITHUB_TOKEN: "true"
 ```
 
 ### Required Secrets

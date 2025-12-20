@@ -27,11 +27,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 1
 
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
+
       - name: Run opencode
-        uses: sst/opencode/github@dev
+        run: ~/.opencode/bin/opencode github run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        with:
-          model: anthropic/claude-sonnet-4-20250514
-          use_github_token: "true"
+          MODEL: anthropic/claude-sonnet-4-20250514
+          USE_GITHUB_TOKEN: "true"

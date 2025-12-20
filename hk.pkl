@@ -1,0 +1,22 @@
+amends "package://github.com/jdx/hk/releases/download/v1.28.0/hk@1.28.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.28.0/hk@1.28.0#/Builtins.pkl"
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ["go-fmt"] = Builtins.go_fmt
+      ["go-imports"] = Builtins.go_imports
+      ["go-vet"] = Builtins.go_vet
+      ["golangci-lint"] = Builtins.golangci_lint
+      ["gomod-tidy"] = Builtins.gomod_tidy
+    }
+  }
+  ["pre-push"] {
+    steps {
+      ["go-vet"] = Builtins.go_vet
+      ["golangci-lint"] = Builtins.golangci_lint
+    }
+  }
+}

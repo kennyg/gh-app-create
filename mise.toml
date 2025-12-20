@@ -1,6 +1,8 @@
 [tools]
 go = "latest"
 golangci-lint = "latest"
+hk = "latest"
+pkl = "latest"
 
 [tasks.build]
 description = "Build the binary"

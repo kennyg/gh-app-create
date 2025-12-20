@@ -23,6 +23,7 @@ var (
 	flagFormat   string
 	flagPort     int
 	flagHostname string
+	flagDebug    bool
 )
 
 var createCmd = &cobra.Command{
@@ -44,6 +45,7 @@ func init() {
 	createCmd.Flags().StringVarP(&flagFormat, "format", "f", "yaml", "Output format: yaml, json, env, github-actions")
 	createCmd.Flags().IntVar(&flagPort, "port", 9876, "Local port for OAuth callback")
 	createCmd.Flags().StringVar(&flagHostname, "hostname", "", "GitHub Enterprise Server hostname")
+	createCmd.Flags().BoolVar(&flagDebug, "debug", false, "Show manifest JSON in the browser form")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -93,7 +95,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "   Events: %v\n\n", m.DefaultEvents)
 
 	manifestJSON, _ := json.Marshal(m)
-	formHTML := buildFormHTML(m, registerURL, string(manifestJSON))
+	prettyJSON, _ := json.MarshalIndent(m, "", "  ")
+	formHTML := buildFormHTML(m, registerURL, string(manifestJSON), string(prettyJSON), flagDebug)
 
 	callbackServer := server.New(flagPort)
 	callbackServer.FormHTML = formHTML
@@ -190,35 +193,64 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func buildFormHTML(m manifest.Manifest, registerURL, manifestJSON string) string {
+func buildFormHTML(m manifest.Manifest, registerURL, manifestJSON, prettyJSON string, debug bool) string {
+	debugPanel := ""
+	if debug {
+		debugPanel = fmt.Sprintf(`<details class="debug">
+<summary>Manifest JSON</summary>
+<pre>%s</pre>
+</details>`, prettyJSON)
+	}
+
+	eventsHTML := ""
+	if len(m.DefaultEvents) > 0 {
+		eventsHTML = `<div class="section"><h4>Events</h4><div class="badges">`
+		for _, event := range m.DefaultEvents {
+			eventsHTML += fmt.Sprintf(`<span class="badge badge-event">%s</span>`, event)
+		}
+		eventsHTML += `</div></div>`
+	}
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
 <title>Create GitHub App: %s</title>
 <style>
-body { font-family: system-ui; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f6f8fa; }
-.card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-h2 { margin-top: 0; color: #24292f; }
-.permissions { text-align: left; background: #f6f8fa; padding: 16px; border-radius: 8px; margin: 20px 0; }
-.permissions h4 { margin: 0 0 8px 0; color: #57606a; }
-.permissions code { background: #eaeef2; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-button { background: #2da44e; color: white; border: none; padding: 14px 28px; font-size: 16px; border-radius: 8px; cursor: pointer; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f6f8fa; padding: 20px; }
+.card { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 480px; width: 100%%; }
+h2 { margin: 0 0 8px 0; color: #24292f; font-size: 24px; }
+.app-name { font-size: 18px; font-weight: 600; color: #24292f; margin: 0 0 4px 0; }
+.app-desc { color: #57606a; margin: 0 0 20px 0; font-size: 14px; }
+.section { text-align: left; background: #f6f8fa; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+.section h4 { margin: 0 0 12px 0; color: #24292f; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+.badge-read { background: #ddf4ff; color: #0969da; }
+.badge-write { background: #fff8c5; color: #9a6700; }
+.badge-event { background: #f3e8ff; color: #8250df; }
+button { background: #2da44e; color: white; border: none; padding: 14px 28px; font-size: 16px; font-weight: 500; border-radius: 8px; cursor: pointer; width: 100%%; transition: background 0.15s; }
 button:hover { background: #22863a; }
+.debug { text-align: left; margin-top: 16px; border: 1px dashed #d0d7de; border-radius: 8px; padding: 12px; background: #f6f8fa; }
+.debug summary { cursor: pointer; font-size: 12px; color: #57606a; font-weight: 500; }
+.debug pre { margin: 12px 0 0 0; padding: 12px; background: #24292f; color: #7ee787; border-radius: 6px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
 <div class="card">
 <h2>Create GitHub App</h2>
-<p><strong>%s</strong></p>
-<p style="color: #57606a;">%s</p>
-<div class="permissions">
+<p class="app-name">%s</p>
+<p class="app-desc">%s</p>
+<div class="section">
 <h4>Permissions</h4>
-%s
+<div class="badges">%s</div>
 </div>
+%s
 <form action="%s" method="post">
-<textarea name="manifest" rows="5" cols="80">%s</textarea>
+<input type="hidden" name="manifest" value='%s'>
 <button type="submit">Create GitHub App</button>
 </form>
+%s
 </div>
 </body>
 </html>`,
@@ -226,7 +258,9 @@ button:hover { background: #22863a; }
 		m.Name,
 		m.Description,
 		manifest.FormatPermissionsHTML(m.DefaultPermissions),
+		eventsHTML,
 		registerURL,
 		manifestJSON,
+		debugPanel,
 	)
 }

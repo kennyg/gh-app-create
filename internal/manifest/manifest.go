@@ -47,11 +47,15 @@ func FormatPermissions(perms map[string]string) string {
 	return strings.Join(parts, ", ")
 }
 
-// FormatPermissionsHTML returns permissions formatted as HTML code tags
+// FormatPermissionsHTML returns permissions formatted as HTML badges
 func FormatPermissionsHTML(perms map[string]string) string {
 	var sb strings.Builder
 	for k, v := range perms {
-		sb.WriteString(fmt.Sprintf("<code>%s: %s</code> ", k, v))
+		badgeClass := "badge-read"
+		if v == "write" {
+			badgeClass = "badge-write"
+		}
+		sb.WriteString(fmt.Sprintf(`<span class="badge %s">%s: %s</span>`, badgeClass, k, v))
 	}
 	return sb.String()
 }

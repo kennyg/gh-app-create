@@ -1,0 +1,27 @@
+[tools]
+go = "latest"
+golangci-lint = "latest"
+
+[tasks.build]
+description = "Build the binary"
+run = "go build -o gh-app-create ./cmd/gh-app-create"
+
+[tasks.test]
+description = "Run tests"
+run = "go test ./..."
+
+[tasks.lint]
+description = "Run linter"
+run = "golangci-lint run"
+
+[tasks.install]
+description = "Install to GOPATH/bin"
+run = "go install ./cmd/gh-app-create"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -f gh-app-create"
+
+[tasks.tidy]
+description = "Tidy go modules"
+run = "go mod tidy"
